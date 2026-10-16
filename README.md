@@ -1,0 +1,1 @@
+Temporario - midias para o Meta Ads. Sera apagado.
