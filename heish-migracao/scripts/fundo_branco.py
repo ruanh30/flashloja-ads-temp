@@ -46,6 +46,8 @@ MARGEM_DE_BORDA = 3
 RAIO_DE_FUSAO_AMPLO = 90
 RAIO_DE_FUSAO_FINO = 6
 QUALIDADE_WEBP = 92
+# O sufixo acompanha o arquivo ate a loja, onde distingue a versao recortada da foto original.
+SUFIXO_DE_SAIDA = "-fundo-branco"
 ALTURA_DA_FOLHA_DE_CONFERENCIA = 900
 
 
@@ -188,7 +190,7 @@ def processar(
         foto = original.convert("RGB")
     alfa = segmentador.mascara(foto)
     resultado = enquadrar_para_vitrine(compor_sobre_branco(foto, alfa), alfa)
-    destino = pasta_saida / f"{caminho.stem}.webp"
+    destino = pasta_saida / f"{caminho.stem}{SUFIXO_DE_SAIDA}.webp"
     resultado.save(destino, "WEBP", quality=QUALIDADE_WEBP, method=6)
     if pasta_conferencia is not None:
         folha_de_conferencia(foto, alfa, resultado).save(
