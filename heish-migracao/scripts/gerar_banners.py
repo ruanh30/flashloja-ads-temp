@@ -1,8 +1,8 @@
 """Gera as imagens de apoio da vitrine Heish Moda Praia.
 
-Hoje sao os atalhos de categoria exibidos em circulos na pagina inicial. Cada
-imagem e descrita de forma declarativa em BANNERS e sai de uma capa de produto
-ja em fundo branco: o script apenas recorta e exporta, sem retocar nem gravar
+Sao o banner principal e as capas das categorias da pagina inicial. Cada imagem
+e descrita de forma declarativa em BANNERS e sai das fotos originais dos
+produtos: o script apenas recorta, compoe e exporta, sem retocar nem gravar
 texto na imagem.
 
 Uso:
@@ -17,13 +17,14 @@ from pathlib import Path
 from PIL import Image
 
 RAIZ = Path(__file__).resolve().parent.parent
-PASTA_CAPAS = RAIZ / "capas-vitrine"
+PASTA_FOTOS = RAIZ / "imagens"
 PASTA_SAIDA = RAIZ / "banners"
 
 COR_CALHA = (255, 255, 255)
 QUALIDADE_WEBP = 90
-# As categorias aparecem em circulos de ate 96 px. 480 px cobre telas de alta densidade.
-LADO_DA_BOLINHA = 480
+# Capas de categoria em 4:5, a mesma proporcao das fotos da vitrine.
+LARGURA_DA_CATEGORIA = 960
+ALTURA_DA_CATEGORIA = 1200
 
 
 @dataclass(frozen=True)
@@ -48,29 +49,46 @@ class Banner:
     calha: int = 0
 
 
-def capa(produto: int) -> Path:
-    """Capa de vitrine do produto, ja em fundo branco (ver capas_vitrine.py)."""
-    return PASTA_CAPAS / f"{produto}-capa-fundo-branco.webp"
+def foto(nome: str) -> Path:
+    """Foto original do produto, como veio da FacilZap."""
+    return PASTA_FOTOS / f"{nome}.webp"
 
 
 BANNERS: tuple[Banner, ...] = (
     Banner(
-        nome="bolinha-biquinis",
-        largura=LADO_DA_BOLINHA,
-        altura=LADO_DA_BOLINHA,
-        paineis=(Painel(capa(4568136), (0.50, 0.50), zoom=1.40),),
+        nome="heish-banner-sirena-computador",
+        largura=2400,
+        altura=1200,
+        calha=4,
+        paineis=(
+            Painel(foto("4568136_01"), (0.50, 0.28)),
+            Painel(foto("4568136_02"), (0.50, 0.28)),
+            Painel(foto("4568136_03"), (0.50, 0.28)),
+        ),
     ),
     Banner(
-        nome="bolinha-maios",
-        largura=LADO_DA_BOLINHA,
-        altura=LADO_DA_BOLINHA,
-        paineis=(Painel(capa(4191760), (0.50, 0.27), zoom=1.50),),
+        nome="heish-banner-sirena-celular",
+        largura=1080,
+        altura=1350,
+        paineis=(Painel(foto("4568136_01"), (0.50, 0.30)),),
     ),
     Banner(
-        nome="bolinha-saidas-de-praia",
-        largura=LADO_DA_BOLINHA,
-        altura=LADO_DA_BOLINHA,
-        paineis=(Painel(capa(4567819), (0.50, 0.85), zoom=1.35),),
+        nome="heish-categoria-biquinis",
+        largura=LARGURA_DA_CATEGORIA,
+        altura=ALTURA_DA_CATEGORIA,
+        paineis=(Painel(foto("4568066_01"), (0.50, 0.30)),),
+    ),
+    Banner(
+        nome="heish-categoria-maios",
+        largura=LARGURA_DA_CATEGORIA,
+        altura=ALTURA_DA_CATEGORIA,
+        paineis=(Painel(foto("4191760_01"), (0.50, 0.60), zoom=1.15),),
+    ),
+    Banner(
+        nome="heish-categoria-saidas-de-praia",
+        largura=LARGURA_DA_CATEGORIA,
+        altura=ALTURA_DA_CATEGORIA,
+        paineis=(Painel(foto("4567819_02"), (0.0, 0.50), zoom=1.14),),
     ),
 )
 
