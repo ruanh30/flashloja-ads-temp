@@ -49,6 +49,8 @@ PESO_DE_APOIO = 500
 TRACKING_DO_TITULO = -0.055
 TRACO_DO_TITULO = 0.006
 TRACKING_DO_SUBTITULO = -0.035
+# As letras apertadas do titulo fecham tambem o espaco entre palavras; este valor o devolve.
+ESPACO_ENTRE_PALAVRAS_DO_TITULO = 0.17
 RUIDO_DO_FUNDO = 1.2
 # Ajuste leve de cor da modelo: um pouco menos de saturacao e de vermelho.
 SATURACAO_DA_MODELO = 0.93
@@ -102,6 +104,7 @@ class Bloco:
     entrelinha: float = 1.0
     tracking: float = TRACKING_DO_SUBTITULO
     traco: float = 0.0
+    espaco_entre_palavras: float = 0.0
     atras_da_modelo: bool = False
 
 
@@ -169,33 +172,73 @@ FUNDO_CELULAR = Fundo(
     forma=((0.00, 0.00), (0.08, 0.00), (0.30, 0.45), (0.60, 0.62), (0.72, 0.88), (0.91, 0.95), (1.00, 1.00)),
 )
 
+FAIXA_COMPUTADOR = Faixa(topo=795, fatores=(0.0, 0.70, 1.10))
+FAIXA_CELULAR = Faixa(topo=852, fatores=(0.0, 0.62, 0.99))
+AVISO_DE_ENVIO = "ENVIAMOS PARA TODO O BRASIL"
+
+
+def titulo(linhas: tuple[str, ...], tamanho: int, x: int, topo: int, alinhamento: Alinhamento, **opcoes: bool | float) -> Bloco:
+    """Bloco no estilo do titulo da referencia: letras apertadas e traco engrossado."""
+    return Bloco(
+        linhas, tamanho, x, topo, alinhamento, tracking=TRACKING_DO_TITULO, traco=TRACO_DO_TITULO,
+        espaco_entre_palavras=ESPACO_ENTRE_PALAVRAS_DO_TITULO, **opcoes,
+    )
+
+
 BANNERS: tuple[Banner, ...] = (
     Banner(
         nome="heish-banner-sirena-estudio-computador",
         largura=1920,
         altura=920,
         fundo=FUNDO_COMPUTADOR,
-        faixa=Faixa(topo=795, fatores=(0.0, 0.70, 1.10)),
+        faixa=FAIXA_COMPUTADOR,
         modelo=Modelo(foto="4568136_02", escala=0.905, topo_da_cabeca=58, centro_x=991),
         blocos=(
-            Bloco(("BIQUÍNI",), 190, 155, 322, "esquerda", tracking=TRACKING_DO_TITULO, traco=TRACO_DO_TITULO, atras_da_modelo=True),
-            Bloco(("SIRENA",), 190, 1829, 322, "direita", tracking=TRACKING_DO_TITULO, traco=TRACO_DO_TITULO, atras_da_modelo=True),
+            titulo(("BIQUÍNI",), 190, 155, 322, "esquerda", atras_da_modelo=True),
+            titulo(("SIRENA",), 190, 1829, 322, "direita", atras_da_modelo=True),
             Bloco(("4 CORES", "POR R$ 60"), 53, 1782, 512, "direita", entrelinha=1.02),
         ),
-        pilula=Pilula("ENVIAMOS PARA TODO O BRASIL", 22, 1782, 624, 47, "direita"),
+        pilula=Pilula(AVISO_DE_ENVIO, 22, 1782, 624, 47, "direita"),
     ),
     Banner(
         nome="heish-banner-sirena-estudio-celular",
         largura=750,
         altura=1026,
         fundo=FUNDO_CELULAR,
-        faixa=Faixa(topo=852, fatores=(0.0, 0.62, 0.99)),
+        faixa=FAIXA_CELULAR,
         modelo=Modelo(foto="4568136_02", escala=0.96, topo_da_cabeca=28, centro_x=188),
         blocos=(
-            Bloco(("BIQUÍNI", "SIRENA"), 118, 690, 72, "direita", entrelinha=0.86, tracking=TRACKING_DO_TITULO, traco=TRACO_DO_TITULO),
+            titulo(("BIQUÍNI", "SIRENA"), 118, 690, 72, "direita", entrelinha=0.86),
             Bloco(("4 CORES", "POR R$ 60"), 42, 690, 296, "direita", entrelinha=1.02),
         ),
-        pilula=Pilula("ENVIAMOS PARA TODO O BRASIL", 16, 690, 388, 38, "direita", folga_lateral=18),
+        pilula=Pilula(AVISO_DE_ENVIO, 16, 690, 388, 38, "direita", folga_lateral=18),
+    ),
+    Banner(
+        nome="heish-banner-kit-capri-estudio-computador",
+        largura=1920,
+        altura=920,
+        fundo=FUNDO_COMPUTADOR,
+        faixa=FAIXA_COMPUTADOR,
+        modelo=Modelo(foto="4611471_01", escala=0.72, topo_da_cabeca=58, centro_x=808),
+        blocos=(
+            titulo(("KIT",), 212, 588, 316, "direita", atras_da_modelo=True),
+            titulo(("CAPRI",), 212, 1046, 316, "esquerda", atras_da_modelo=True),
+            Bloco(("BIQUÍNI + CALÇA", "POR R$ 159,90"), 53, 1594, 512, "direita", entrelinha=1.02),
+        ),
+        pilula=Pilula(AVISO_DE_ENVIO, 22, 1594, 624, 47, "direita"),
+    ),
+    Banner(
+        nome="heish-banner-kit-capri-estudio-celular",
+        largura=750,
+        altura=1026,
+        fundo=FUNDO_CELULAR,
+        faixa=FAIXA_CELULAR,
+        modelo=Modelo(foto="4611471_01", escala=0.64, topo_da_cabeca=322, centro_x=375),
+        blocos=(
+            titulo(("KIT CAPRI",), 118, 375, 64, "centro"),
+            Bloco(("BIQUÍNI + CALÇA", "POR R$ 159,90"), 40, 375, 180, "centro", entrelinha=1.02),
+        ),
+        pilula=Pilula(AVISO_DE_ENVIO, 16, 375, 272, 38, "centro", folga_lateral=18),
     ),
 )
 
@@ -281,15 +324,20 @@ class Fontes:
         return self._cache[chave]
 
 
-def posicoes_das_letras(fonte: ImageFont.FreeTypeFont, texto: str, tracking: float) -> tuple[list[float], float]:
-    """Posicao de cada letra, com o kerning da fonte e o tracking pedido, e a largura total."""
+def posicoes_das_letras(
+    fonte: ImageFont.FreeTypeFont, texto: str, tracking: float, espaco_extra: float = 0.0
+) -> tuple[list[float], float]:
+    """Posicao de cada letra, com o kerning da fonte e o tracking pedido, e a largura total.
+
+    espaco_extra e somado a cada espaco entre palavras.
+    """
     posicoes: list[float] = []
     cursor = 0.0
     for indice, letra in enumerate(texto):
         posicoes.append(cursor)
         proxima = texto[indice + 1 : indice + 2]
         avanco = fonte.getlength(letra + proxima) - fonte.getlength(proxima) if proxima else fonte.getlength(letra)
-        cursor += avanco + tracking
+        cursor += avanco + tracking + (espaco_extra if letra == " " else 0.0)
     return posicoes, cursor - tracking
 
 
@@ -303,8 +351,9 @@ def escrever_linha(
     tracking: float,
     traco: int,
     cor: tuple[int, int, int, int],
+    espaco_extra: float = 0.0,
 ) -> None:
-    posicoes, largura = posicoes_das_letras(fonte, texto, tracking)
+    posicoes, largura = posicoes_das_letras(fonte, texto, tracking, espaco_extra)
     inicio = {"esquerda": x, "centro": x - largura / 2, "direita": x - largura}[alinhamento]
     for letra, posicao in zip(texto, posicoes):
         desenho.text((inicio + posicao, linha_de_base), letra, font=fonte, fill=cor, anchor="ls", stroke_width=traco, stroke_fill=cor)
@@ -323,6 +372,7 @@ def desenhar_bloco(camada: Image.Image, bloco: Bloco, fontes: Fontes) -> None:
         escrever_linha(
             desenho, fonte, linha, em_saida(bloco.x), linha_de_base, bloco.alinhamento,
             bloco.tracking * tamanho, round(bloco.traco * tamanho), (*BRANCO, 255),
+            bloco.espaco_entre_palavras * tamanho,
         )
         linha_de_base += round(tamanho * bloco.entrelinha)
 
