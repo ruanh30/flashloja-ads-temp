@@ -125,6 +125,15 @@ def formatar_preco(valor: float | None) -> str:
     return "" if valor is None else f"{valor:.2f}"
 
 
+def descricao_em_html(descricao: str) -> str:
+    """Garante HTML na descricao. Texto puro vira paragrafo, com as quebras de linha preservadas."""
+    texto = descricao.strip()
+    if not texto or re.search(r"<[a-zA-Z/][^>]*>", texto):
+        return texto
+    linhas = [linha.strip() for linha in texto.splitlines() if linha.strip()]
+    return "<p>" + "<br>".join(linhas) + "</p>"
+
+
 def produtos_brutos(resposta: Any) -> list[dict[str, Any]]:
     """A API devolve a lista direta ou dentro de 'data'. Aceita os dois formatos."""
     if isinstance(resposta, list):
@@ -206,7 +215,7 @@ def linhas_do_produto(
             linha.update(
                 {
                     "Title": produto["nome"],
-                    "Body (HTML)": produto.get("descricao_html") or "",
+                    "Body (HTML)": descricao_em_html(produto.get("descricao_html") or ""),
                     "Vendor": MARCA,
                     "Type": tipos[0],
                     "Tags": etiquetas(produto, tipos),
@@ -250,6 +259,94 @@ def linhas_do_produto(
             )
         linhas.append(linha)
     return linhas
+
+
+def valores_unicos(variantes: list[dict[str, Any]], opcoes: tuple[str, ...], posicao: int) -> list[str]:
+    """Valores de uma opcao, sem repeticao e na ordem em que aparecem."""
+    return list(dict.fromkeys(valores_das_opcoes(variante, opcoes)[posicao] for variante in variantes))
+
+
+def entrada_da_api(
+    produto: dict[str, Any], precos: Precos, fotos: list[str], base_imagens: str, local_de_estoque: str
+) -> dict[str, Any]:
+    """Entrada da mutacao productSet da API da Shopify para um produto completo."""
+    variantes = [variante for variante in produto["variantes"] if variante.get("ativa")]
+    opcoes = opcoes_do_produto(variantes)
+    tipos = [TIPO_POR_CATEGORIA[categoria] for categoria in produto["categorias"]]
+    entradas_das_variantes: list[dict[str, Any]] = []
+    for variante in variantes:
+        valores = valores_das_opcoes(variante, opcoes)
+        entrada: dict[str, Any] = {
+            "optionValues": [{"optionName": opcao, "name": valor} for opcao, valor in zip(opcoes, valores)],
+            "price": formatar_preco(precos.de_venda),
+            "sku": variante.get("sku") or "",
+            "inventoryPolicy": "DENY",
+            "inventoryItem": {
+                "tracked": True,
+                "requiresShipping": True,
+                "measurement": {"weight": {"value": float(produto["peso_g"]), "unit": "GRAMS"}},
+            },
+            "inventoryQuantities": [
+                {
+                    "locationId": local_de_estoque,
+                    "name": "available",
+                    "quantity": int(variante.get("estoque") or 0),
+                }
+            ],
+        }
+        if precos.de_comparacao is not None:
+            entrada["compareAtPrice"] = formatar_preco(precos.de_comparacao)
+        entradas_das_variantes.append(entrada)
+    return {
+        "title": produto["nome"],
+        "handle": criar_handle(produto["nome"]),
+        "descriptionHtml": descricao_em_html(produto.get("descricao_html") or ""),
+        "vendor": MARCA,
+        "productType": tipos[0],
+        "tags": [etiqueta.strip() for etiqueta in etiquetas(produto, tipos).split(",") if etiqueta.strip()],
+        "status": "ACTIVE",
+        "productOptions": [
+            {
+                "name": opcao,
+                "position": posicao + 1,
+                "values": [{"name": valor} for valor in valores_unicos(variantes, opcoes, posicao)],
+            }
+            for posicao, opcao in enumerate(opcoes)
+        ],
+        "files": [
+            {
+                "originalSource": f"{base_imagens.rstrip('/')}/{arquivo}",
+                "alt": produto["nome"],
+                "contentType": "IMAGE",
+            }
+            for arquivo in fotos
+        ],
+        "variants": entradas_das_variantes,
+    }
+
+
+def gravar_entradas_da_api(
+    catalogo: list[dict[str, Any]],
+    precos: dict[int, Precos],
+    fotos: dict[int, list[str]],
+    base_imagens: str,
+    local_de_estoque: str,
+    pasta: Path,
+) -> int:
+    """Grava um arquivo JSON por produto, pronto para ser enviado como variavel 'input'."""
+    pasta.mkdir(parents=True, exist_ok=True)
+    gravados = 0
+    for produto in catalogo:
+        if not produto.get("ativo"):
+            continue
+        identificador = int(produto["id"])
+        entrada = entrada_da_api(
+            produto, precos[identificador], fotos.get(identificador, []), base_imagens, local_de_estoque
+        )
+        destino = pasta / f"{entrada['handle']}.json"
+        destino.write_text(json.dumps({"input": entrada}, ensure_ascii=False, indent=1), encoding="utf-8")
+        gravados += 1
+    return gravados
 
 
 def linha_complementar(produto: dict[str, Any], precos: Precos) -> dict[str, str]:
@@ -314,15 +411,23 @@ def ler_argumentos() -> argparse.Namespace:
     analisador.add_argument("--manifesto", type=Path, required=True)
     analisador.add_argument("--base-imagens", required=True, help="URL publica da pasta das fotos.")
     analisador.add_argument("--saida", type=Path, required=True)
+    analisador.add_argument(
+        "--local-de-estoque",
+        default=None,
+        help="Id do local de estoque na Shopify. Quando informado, grava tambem as entradas da API.",
+    )
     return analisador.parse_args()
 
 
 def main() -> None:
     argumentos = ler_argumentos()
+    catalogo = ler_json(argumentos.catalogo)
+    precos = ler_precos(ler_json(argumentos.facilzap))
+    fotos = fotos_por_produto(ler_json(argumentos.manifesto))
     resumo = exportar(
-        catalogo=ler_json(argumentos.catalogo),
-        precos=ler_precos(ler_json(argumentos.facilzap)),
-        fotos=fotos_por_produto(ler_json(argumentos.manifesto)),
+        catalogo=catalogo,
+        precos=precos,
+        fotos=fotos,
         base_imagens=argumentos.base_imagens,
         pasta_saida=argumentos.saida,
     )
@@ -330,6 +435,11 @@ def main() -> None:
         f"{resumo.produtos} produtos, {resumo.variantes} variantes, {resumo.unidades} unidades em estoque, "
         f"{resumo.fotos} fotos, {resumo.em_promocao} produtos em promocao"
     )
+    if argumentos.local_de_estoque:
+        gravados = gravar_entradas_da_api(
+            catalogo, precos, fotos, argumentos.base_imagens, argumentos.local_de_estoque, argumentos.saida / "api"
+        )
+        print(f"{gravados} entradas da API gravadas em {argumentos.saida / 'api'}")
 
 
 if __name__ == "__main__":
