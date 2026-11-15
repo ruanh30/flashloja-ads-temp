@@ -19,10 +19,12 @@ a faixa azul, que por isso fica livre de texto.
 As medidas de cada banner estao em pixels do banner de referencia (1920x920 no
 computador e 750x1026 no celular). A imagem final sai ampliada por ESCALA_DE_SAIDA.
 
+As fontes usadas (Manrope-500.ttf e Manrope-800.ttf) ficam em fontes/, junto com a
+licenca. A loja nao usa esses arquivos: la a Manrope vem da biblioteca da Shopify.
+
 Uso:
-    # fontes: baixe Manrope-500.ttf e Manrope-800.ttf (Google Fonts) para uma pasta
-    python3 heish-migracao/scripts/gerar_banner_estudio.py --fontes PASTA
-    python3 heish-migracao/scripts/gerar_banner_estudio.py --fontes PASTA --modelo CAMINHO.onnx
+    python3 heish-migracao/scripts/gerar_banner_estudio.py
+    python3 heish-migracao/scripts/gerar_banner_estudio.py --modelo CAMINHO.onnx
 """
 
 from __future__ import annotations
@@ -39,6 +41,7 @@ from PIL import Image, ImageDraw, ImageFont
 RAIZ = Path(__file__).resolve().parent.parent
 PASTA_FOTOS = RAIZ / "imagens"
 PASTA_SAIDA = RAIZ / "banner-estudio"
+PASTA_FONTES = RAIZ / "fontes"
 
 ESCALA_DE_SAIDA = 1.5
 QUALIDADE_WEBP = 88
@@ -428,7 +431,7 @@ def montar(banner: Banner, fontes: Fontes) -> Image.Image:
 
 def ler_argumentos() -> argparse.Namespace:
     leitor = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    leitor.add_argument("--fontes", type=Path, required=True, help="pasta com Manrope-500.ttf e Manrope-800.ttf")
+    leitor.add_argument("--fontes", type=Path, default=PASTA_FONTES, help="pasta com Manrope-500.ttf e Manrope-800.ttf")
     leitor.add_argument("--modelo", type=Path, help="arquivo .onnx do BiRefNet, so para criar um recorte que ainda nao existe")
     return leitor.parse_args()
 
